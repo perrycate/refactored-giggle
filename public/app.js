@@ -27,21 +27,34 @@ class Ping {
 class Connection {
   constructor(id) {
     this.dataChannel = null;
+    this.file = null;
     this.id = id;
-    this.graphData = Array.from(Array(DATA_LENGTH).keys()).map((x) => { return 0; });
-    this.totalPings = 0;
 
     console.log('Creating PeerConnection with configuration: ', configuration);
     this.peerConnection = new RTCPeerConnection(configuration);
     this.peerConnection.addEventListener('datachannel', event => {
       // If we got a data channel, we know we're connected.
-      document.querySelector('#userPrompt').innerText = "Connected! Your peer is measuring latency now."
+      document.querySelector('#userPrompt').innerText = "Connected!"
       this.dataChannel = event.channel;
       this.registerDataChannelListeners();
     });
     console.log('Created.');
 
     this.db = firebase.firestore();
+
+
+    // Listen for file upload. Realistically this should go somewhere else.
+    const inputElement = document.getElementById("input");
+    inputElement.addEventListener("change", (event) => {
+      const fileToSend = event.target.files[0];
+      if (this.dataChannel && this.dataChannel.readyState != "open") {
+        // If the datachannel isn't open, store the "file" so we can send it later.
+        this.file = fileToSend;
+        return
+      }
+      this.dataChannel.send(fileToSend)
+
+    }, false);
   }
 
   async create() {
@@ -126,38 +139,26 @@ class Connection {
 
   }
 
-  handlePing(p) {
-    // Echo back anything that we didn't send.
-    if (p.origin !== this.id) {
-      console.log("echoing back", p)
-      this.dataChannel.send(p);
-      return
-    }
-
-    // Update the graph with the round trip latency.
-    this.graphData.push(Date.now() - p.timestamp);
-    this.graphData.shift();
-    this.totalPings += 1;
-    updateGraph(this.graphData);
-
-    // Display median thus far.
-    let cap = Math.min(this.totalPings, DATA_LENGTH);
-    let m = median(this.graphData.slice(-1 * cap));
-    document.querySelector('#latency').innerText = `Your median round trip latency in ms: ${m}`;
-  }
-
   registerDataChannelListeners() {
     this.dataChannel.addEventListener('message', event => {
-      this.handlePing(Object.assign(new Ping, JSON.parse(event.data)));
+      console.log("recieved:")
+      let d = event.data
+      console.dir(d)
+      console.log(d.text())
+      const a = document.getElementById('download')
+      a.href = URL.createObjectURL(d)
+      a.download = 'TEST'
+      a.click()
+      console.log('done')
+
     })
 
     this.dataChannel.addEventListener('open', () => {
-      // Connection is established, now we just need to wait for data.
-      setInterval(() => {
-        let p = new Ping(this.id, Date.now())
-        this.dataChannel.send(p)
-      }, PING_INTERVAL);
-    });
+      console.log('opened a datachannel!')
+      console.log(this.file)
+      this.dataChannel.send(this.file)
+    })
+
   }
 
   collectIceCandidatesInto(collection) {
@@ -220,14 +221,6 @@ function registerPeerConnectionListeners(peerConnection) {
     console.log(
       `ICE connection state change: ${peerConnection.iceConnectionState}`);
   });
-}
-
-// Returns the median of src, sort of.
-// If src has an even number of elements, it just returns the upper of the two
-// "halfway" elements. For the numbers we're working with, that's fine.
-function median(src) {
-  let sorted = Array.from(src).sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
 }
 
 function init() {

@@ -45,97 +45,13 @@
             <p id="copyDisplay"></p>
             <br />
             <span id="latency"></span>
+            <!-- Just screwing around -->
+            <input type="file" id="input">
+            <a id="download"></a>
+            <script>
+            </script>
         </div>
-
-        <!-- Latency Graph -->
-        <div id="latencyGraph" class="container h-100"></div>
-    </div>
-    <script>
-        // Number of data points to keep before discarding the oldest ones.
-        const DATA_LENGTH = 240;
-        // How long to wait between each ping.
-        const PING_INTERVAL = 250;
-        // D3 graph display code.
-        // Leaving this inline for now because it's a lot more view-oriented
-        // than (most) of the content of app.js. I'm not going to bother finding
-        // a better way to factor this since I'll end up restructuring everything
-        // once I incorporate react anyway.
-
-        // Set the dimensions and margins of the graph.
-        const margin = { top: 10, right: 30, bottom: 30, left: 30 },
-            totalWidth = 460,
-            totalHeight = 400,
-            width = totalWidth - margin.left - margin.right,
-            height = totalHeight - margin.top - margin.bottom;
-
-        // Append the svg object to the body of the page.
-        let svg = d3.select("#latencyGraph")
-            .append("svg")
-            .attr("style", "max-height: 75%")
-            .attr("viewBox", `0 0 ${totalWidth} ${totalHeight}`)
-            .append("g")
-            .attr("transform",
-                "translate(" + margin.left + "," + margin.top + ")");;
-
-        // Initialize X axis --> it is a date format.
-        let x = d3.scaleLinear().range([0, width]);
-        let xAxis = d3.axisBottom(x).tickValues([]);
-        svg.append("g")
-            .attr("transform", "translate(0," + height + ")")
-            .attr("class", "myXaxis");
-
-        x.domain([0, DATA_LENGTH])
-        svg.selectAll(".myXaxis").transition().call(xAxis);
-
-        // Initialize Y axis.
-        let y = d3.scaleLinear().range([height, 0]);
-        let yAxis = d3.axisLeft(y);
-        svg.append("g")
-            .attr("class", "myYaxis");
-
-        // We're going to use this to update the graph from all the way in app.js.
-        // This feels ugly but I don't care enough to bother fixing it yet.
-        let updateGraph = function (data) {
-            // Update axes.
-            y.domain([0, d3.max(data, function (d) { return d; })])
-            svg.selectAll(".myYaxis").transition().call(yAxis);
-
-            // Bind data.
-            let u = svg.selectAll(".lineTest").data([data]);
-
-            // Update line.
-            u
-                .enter()
-                // Make sure the path is behind the y-axis, so the path doesn't
-                // go past the axis as it slides left.
-                // To make sure of this, the y-axis needs to appear first in the DOM.
-                .insert("path", ".myYaxis")
-                .attr("class", "lineTest")
-                .attr("fill", "none")
-                .attr("stroke", "steelblue")
-                .attr("stroke-width", 1.5)
-                .merge(u)
-                .attr("d", d3.line()
-                    .x(function (d, i) { return x(i) })
-                    .y(function (d, i) { return y(d) })
-                )
-
-                .attr("transform", null)
-                // Interupt previous transition if it was still ongoing.
-                // This will make it just jump to where it was transitioning to.
-                .interrupt()
-                // Slide graph over by 1 data point.
-                .transition()
-                .duration(PING_INTERVAL)
-                .ease(d3.easeLinear)
-                .attr("transform", "translate(" + x(-1) + ",0)");
-        };
-
-        //Read the data
-        let data = Array.from(Array(DATA_LENGTH).keys()).map((x) => { return 0; });
-        updateGraph(data);
-    </script>
-    <script src="app.js"></script>
+        <script src="app.js"></script>
 </body>
 
 </html>
